@@ -2,7 +2,11 @@
 
 `DO PArallel` stuff. This is as simple as it sounds.
 
-  * Decide if you need Threads or Processes
+  * Decide if you need Threads or Processes. 
+       * Rule of Thumb: 
+            * IO-bound -> threads; 
+            * CPU-bound -> processes
+  * [*OPTIONAL*] read maximum numbers of threads/processes and jobs on a `config.cfg` file.
   * Prepare a `list` of arguments to be feed to your function `func`
   * Call it with  `dopa.parallelize(arglist, func)`
 
