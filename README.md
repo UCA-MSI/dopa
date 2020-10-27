@@ -28,5 +28,5 @@ Returns a list of results.
 
 ### Installation
 ```
-pip install git+https://github.com/myuser/foo.git@v123
+pip install git+https://github.com/UCA-MSI/dopa.git
 ```
