@@ -1,6 +1,7 @@
 import concurrent.futures
 from configparser import ConfigParser
 from inspect import signature, Parameter, getmro
+import os
 
 try:
     config = ConfigParser()
@@ -9,8 +10,8 @@ try:
     MAX_PR_DEG = int(config['DEFAULT']['MAX_PR_DEG'])
     MAX_JOB_NUMBER = int(config['DEFAULT']['MAX_JOB_NUMBER'])
 except FileNotFoundError:
-    MAX_TH_DEG = 4
-    MAX_PR_DEG = 2
+    MAX_TH_DEG = os.cpu_count() * 2
+    MAX_PR_DEG = os.cpu_count() - 1
     MAX_JOB_NUMBER = max(MAX_TH_DEG, MAX_PR_DEG) * 2
 
 
