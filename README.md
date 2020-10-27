@@ -1,6 +1,6 @@
 ## DOPA: parallelize jobs easily
 
-This is as simple as it sounds.
+`DO PArallel` stuff. This is as simple as it sounds.
 
   * Decide if you need Threads or Processes
   * Prepare a `list` of arguments to be feed to your function `func`
