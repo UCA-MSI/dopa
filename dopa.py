@@ -1,6 +1,6 @@
 import concurrent.futures
 from configparser import ConfigParser
-
+from inspect import signature, Parameter, getmro
 
 try:
     config = ConfigParser()
@@ -13,8 +13,43 @@ except FileNotFoundError:
     MAX_PR_DEG = 2
     MAX_JOB_NUMBER = max(MAX_TH_DEG, MAX_PR_DEG) * 2
 
-def do_parallel(runs, func, threaded=True):
-    if threaded:
+
+class MalformedArgListError(TypeError):
+    pass
+
+
+def _check_argument_default_value(param):
+    return param.default is not param.empty
+
+
+def _check_all_same_type(sequence):
+    iter_seq = iter(sequence)
+    first_type = type(next(iter_seq))
+    return first_type if all((type(x) is first_type) for x in iter_seq) else False
+
+
+def _check_argument_list(runs, func):
+    try:
+        length = max([len(x) for x in runs])
+        is_consistent = all([len(x) == length for x in runs])
+    except TypeError:
+        length = 1
+        is_consistent = _check_all_same_type(runs)
+    sig = signature(func)
+    if not is_consistent:
+        if all([isinstance(param.default, Parameter.empty) for param in sig.parameters.values()]):
+            raise MalformedArgListError(f"Inconsistent number of arguments passed to function {func.__name__}")
+        else:
+            # print([param for param in sig.parameters.values()])
+            missing = [_check_argument_default_value(param) for param in sig.parameters.values()].count(True)
+            is_loosely_consistent = all([((len(x) == length) or (len(x) + missing == length)) for x in runs])
+            if not is_loosely_consistent:
+                raise MalformedArgListError(f"Inconsistent number of arguments passed to function {func.__name__}")
+    return True
+
+
+def do_parallel(runs, func, use_threads):
+    if use_threads:
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=MAX_TH_DEG)
     else:
         executor = concurrent.futures.ProcessPoolExecutor(max_workers=MAX_PR_DEG)
@@ -47,4 +82,11 @@ def do_parallel(runs, func, threaded=True):
 
     return done
 
+
+def parallelize(runs, func, use_threads=True):
+    try:
+        if _check_argument_list(runs, func):
+            return do_parallel(runs, func, use_threads)
+    except MalformedArgListError:
+        raise RuntimeError('Something bad happened')
 
