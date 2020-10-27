@@ -4,14 +4,14 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="dopa", # Replace with your own username
+    name="dopa",
     version="0.0.1",
     author="Marco Milanesio",
     author_email="milanesio.marco@gmail.com",
     description="Easily parallelize tasks",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/pypa/sampleproject",
+    url="",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
