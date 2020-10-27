@@ -28,5 +28,7 @@ Returns a list of results.
 
 ### Installation
 ```
-pip install git+https://github.com/UCA-MSI/dopa.git
+git clone https://github.com/UCA-MSI/dopa.git
+cd dopa
+python3 setup.py install [--user]
 ```
