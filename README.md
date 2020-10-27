@@ -24,3 +24,9 @@ Returns a list of results.
 ```
     python3 -m unittest tests/test_dopa.py
 ```
+
+
+### Installation
+```
+pip install git+https://github.com/myuser/foo.git@v123
+```
