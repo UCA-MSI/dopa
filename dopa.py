@@ -23,12 +23,24 @@ def _check_argument_default_value(param):
 
 
 def _check_all_same_type(sequence):
+    """
+    Check consistency of types across a sequence
+    :param sequence: the iterable
+    :return: bool
+    """
     iter_seq = iter(sequence)
     first_type = type(next(iter_seq))
     return first_type if all((type(x) is first_type) for x in iter_seq) else False
 
 
 def _check_argument_list(runs, func):
+    """
+
+    :param runs: the list of function parameters
+    :param func: the target function
+    :return: bool
+    :raise MalformedArgListError(TypeError)
+    """
     try:
         length = max([len(x) for x in runs])
         is_consistent = all([len(x) == length for x in runs])
@@ -40,7 +52,6 @@ def _check_argument_list(runs, func):
         if all([isinstance(param.default, Parameter.empty) for param in sig.parameters.values()]):
             raise MalformedArgListError(f"Inconsistent number of arguments passed to function {func.__name__}")
         else:
-            # print([param for param in sig.parameters.values()])
             missing = [_check_argument_default_value(param) for param in sig.parameters.values()].count(True)
             is_loosely_consistent = all([((len(x) == length) or (len(x) + missing == length)) for x in runs])
             if not is_loosely_consistent:
@@ -49,6 +60,14 @@ def _check_argument_list(runs, func):
 
 
 def do_parallel(runs, func, use_threads):
+    """
+    Execute in parallel the list of jobs, submitting each item in the `runs` list to the target function `func`.
+    If `use_threads` is set to True, it uses threads. (False -> processes)
+    :param runs: list of function parameters for the target function. One item for each function call
+    :param func: the target function to be parallelized
+    :param use_threads: bool
+    :return: bool
+    """
     if use_threads:
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=MAX_TH_DEG)
     else:
@@ -84,6 +103,13 @@ def do_parallel(runs, func, use_threads):
 
 
 def parallelize(runs, func, use_threads=True):
+    """
+    Calls the `do_parallel` function after inspecting the consistency of the `runs` list.
+    :param runs: list of function parameters for the target function. One item for each function call
+    :param func: the target function to be parallelized
+    :param use_threads: bool
+    :return: bool
+    """
     try:
         if _check_argument_list(runs, func):
             return do_parallel(runs, func, use_threads)
