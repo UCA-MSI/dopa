@@ -38,3 +38,16 @@ or
 ```
 pip install git+https://github.com/UCA-MSI/dopa.git
 ```
+
+### Basic usage:
+```
+from dopa import dopa
+def f(x):
+    return x + 1
+
+runs = [1,2,3]
+
+print(dopa.parallelize(runs, f))
+
+# output: [4,3,2]
+```
