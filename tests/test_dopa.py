@@ -1,5 +1,5 @@
 import unittest
-import dopa  
+from dopa import dopa  
 
 
 def func1(x):

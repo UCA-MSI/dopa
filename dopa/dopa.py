@@ -5,7 +5,7 @@ import os
 
 try:
     config = ConfigParser()
-    config.read('config.cfg')
+    config.read('dopa/config.cfg')
     MAX_TH_DEG = int(config['DEFAULT']['MAX_TH_DEG'])
     MAX_PR_DEG = int(config['DEFAULT']['MAX_PR_DEG'])
     MAX_JOB_NUMBER = int(config['DEFAULT']['MAX_JOB_NUMBER'])
@@ -117,3 +117,10 @@ def parallelize(runs, func, use_threads=True):
     except MalformedArgListError:
         raise RuntimeError('Something bad happened')
 
+
+def f(x):
+    return x ** 2
+
+if __name__ == "__main__":
+    runs = [1,2,3,4]
+    print(parallelize(runs, f))
