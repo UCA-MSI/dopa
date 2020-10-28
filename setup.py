@@ -11,7 +11,7 @@ setuptools.setup(
     description="Easily parallelize tasks",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="",
+    url="https://github.com/UCA-MSI/dopa.git",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
