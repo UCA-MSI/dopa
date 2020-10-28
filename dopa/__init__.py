@@ -1,1 +1,1 @@
-from dopa import *
+from .dopa import *

@@ -41,7 +41,7 @@ pip install git+https://github.com/UCA-MSI/dopa.git
 
 ### Basic usage:
 ```
-from dopa import dopa
+import dopa
 def f(x):
     return x + 1
 
