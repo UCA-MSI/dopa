@@ -1,5 +1,6 @@
 import unittest
 from dopa import dopa  
+import numpy as np
 
 
 def func1(x):
@@ -13,6 +14,9 @@ def func2(x, y, z):
 def func3(x, y, z=0):
     return func2(x, y, z)
 
+def func4(A,B):
+    return A+B
+
 
 class TestDopa(unittest.TestCase):
     
@@ -22,6 +26,7 @@ class TestDopa(unittest.TestCase):
         self.kw = [(1,2), (4,5,6)]
         self.bad = [(1,2,3), 4]
         self.d = dict.fromkeys(self.singlearg, 2)
+        self.arraylist_single = [(np.array([[1,2,3],[4,5,6]]), np.ones(shape = (2,3)))]
 
     def test_single_arg_thread(self):
         res = dopa.parallelize(self.singlearg, func1)
@@ -51,3 +56,7 @@ class TestDopa(unittest.TestCase):
         with self.assertRaises(dopa.MalformedArgListError):
             dopa._check_argument_list(self.kw, func2)
         self.assertTrue(dopa._check_argument_list(self.kw, func3))
+        
+    def test_array_arg_thread(self):
+        res = dopa.parallelize(self.arraylist_single, func4)
+        self.assertEqual(set(res), np.array([[2,3,4],[5,6,7]]))
