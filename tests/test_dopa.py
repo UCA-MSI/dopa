@@ -59,4 +59,6 @@ class TestDopa(unittest.TestCase):
         
     def test_array_arg_thread(self):
         res = dopa.parallelize(self.arraylist_single, func4)
-        self.assertEqual(set(res), np.array([[2,3,4],[5,6,7]]))
+        res = np.array(res)[0]  # dopa.parallelize return a list 
+        self.assertIsNone(np.testing.assert_almost_equal(res, np.array([[2,3,4],[5,6,7]])))
+
