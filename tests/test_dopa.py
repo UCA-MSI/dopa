@@ -62,3 +62,8 @@ class TestDopa(unittest.TestCase):
         res = np.array(res)[0]  # dopa.parallelize return a list 
         self.assertIsNone(np.testing.assert_almost_equal(res, np.array([[2,3,4],[5,6,7]])))
 
+    def test_consistency_np_array(self):
+        tmp = [np.random.rand(3,2), np.random.rand(2,3)]
+        with self.assertRaises(dopa.MalformedArgListError):
+            dopa._check_argument_list(tmp, None)
+
