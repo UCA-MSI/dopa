@@ -136,10 +136,3 @@ def parallelize(runs, func, use_threads=True):
         raise RuntimeError('Something bad happened')
 
 
-def f(x):
-    return x.T
-
-if __name__ == "__main__":
-    runs = [np.random.rand(3,2) for _ in range(10)]
-    res = parallelize(runs, f)
-    print(all(x.shape == (2,3) for x in res))
