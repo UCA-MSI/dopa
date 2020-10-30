@@ -2,6 +2,9 @@ import concurrent.futures
 from configparser import ConfigParser
 from inspect import signature, Parameter, getmro
 import os
+import numpy as np
+
+__all__ = ['MalformedArgListError', 'parallelize']
 
 try:
     config = ConfigParser()
@@ -42,14 +45,23 @@ def _check_argument_list(runs, func):
     :return: bool
     :raise MalformedArgListError(TypeError)
     """
-    try:
-        length = max([len(x) for x in runs])
-        is_consistent = all([len(x) == length for x in runs])
-    except TypeError:
-        length = 1
-        is_consistent = _check_all_same_type(runs)
+    first = runs[0]
+    if isinstance(first, np.ndarray):
+        is_consistent = all([x.shape == first.shape for x in runs])
+        if not is_consistent:
+            raise MalformedArgListError('Inconsistent shapes of ndarrays')
+        length = None
+    else:
+        try:
+            _it = iter(first)
+            length = max([len(x) for x in runs])
+            is_consistent = all([len(x) == length for x in runs])
+        except:
+            length = 1
+            is_consistent = _check_all_same_type(runs)
+
     sig = signature(func)
-    if not is_consistent:
+    if not is_consistent and length:
         if all([isinstance(param.default, Parameter.empty) for param in sig.parameters.values()]):
             raise MalformedArgListError(f"Inconsistent number of arguments passed to function {func.__name__}")
         else:
@@ -57,6 +69,7 @@ def _check_argument_list(runs, func):
             is_loosely_consistent = all([((len(x) == length) or (len(x) + missing == length)) for x in runs])
             if not is_loosely_consistent:
                 raise MalformedArgListError(f"Inconsistent number of arguments passed to function {func.__name__}")
+    
     return True
 
 
@@ -76,6 +89,8 @@ def do_parallel(runs, func, use_threads):
 
     done = []
 
+    is_ndarray = isinstance(runs[0], np.ndarray)
+
     with executor:
         jobs = {}
         runs_left = len(runs)
@@ -83,10 +98,13 @@ def do_parallel(runs, func, use_threads):
 
         while runs_left:
             for run in runs_iter:
-                try:
-                    future = executor.submit(func, *run)
-                except TypeError:
+                if is_ndarray:
                     future = executor.submit(func, run)
+                else:
+                    try:
+                        future = executor.submit(func, *run)
+                    except TypeError:
+                        future = executor.submit(func, run)
 
                 jobs[future] = run
                 if len(jobs) > MAX_JOB_NUMBER:
@@ -119,8 +137,9 @@ def parallelize(runs, func, use_threads=True):
 
 
 def f(x):
-    return x ** 2
+    return x.T
 
 if __name__ == "__main__":
-    runs = [1,2,3,4]
-    print(parallelize(runs, f))
+    runs = [np.random.rand(3,2) for _ in range(10)]
+    res = parallelize(runs, f)
+    print(all(x.shape == (2,3) for x in res))
