@@ -28,14 +28,6 @@ Returns a list of results.
 
 ### Installation
 ```
-git clone https://github.com/UCA-MSI/dopa.git
-cd dopa
-python3 setup.py install [--user]
-```
-
-or
-
-```
 pip install git+https://github.com/UCA-MSI/dopa.git
 ```
 
