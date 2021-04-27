@@ -15,4 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Added
 - Support for numpy.ndarray
 
+## [0.0.3]
+## Added
+- bugfixing
+- supports for filepaths
+
+## [0.0.3.1]
+## Added
+- update packaging info
+
 

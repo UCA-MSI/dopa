@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="dopa",
-    version="0.0.2",
+    version="0.0.3a",
     author="Marco Milanesio",
     author_email="milanesio.marco@gmail.com",
     description="Easily parallelize tasks",
