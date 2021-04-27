@@ -1,15 +1,13 @@
 import unittest
 from dopa import dopa  
 import numpy as np
-
+import os
 
 def func1(x):
     return x + 1
 
-
 def func2(x, y, z):
     return x + y + z
-
 
 def func3(x, y, z=0):
     return func2(x, y, z)
@@ -17,6 +15,8 @@ def func3(x, y, z=0):
 def func4(A,B):
     return A+B
 
+def func5(fname):
+    return os.stat(fname).st_mode
 
 class TestDopa(unittest.TestCase):
     
@@ -66,4 +66,12 @@ class TestDopa(unittest.TestCase):
         tmp = [np.random.rand(3,2), np.random.rand(2,3)]
         with self.assertRaises(dopa.MalformedArgListError):
             dopa._check_argument_list(tmp, None)
+    
+    def test_path_fnames(self):
+        tmpdir = './'
+        content = [os.path.join(tmpdir, f) for f in os.listdir(tmpdir)]
+        print(content)
+        fnames = [f for f in content if os.path.isfile(f)]
+        print(fnames) 
+        res = dopa.parallelize(fnames, func5)
 
