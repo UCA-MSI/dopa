@@ -16,7 +16,7 @@ results = dopa.parallelize(runs, func)
 print( all([x.shape == (2,3) for x in results]))
 
 
-tup_runs = [(np.random.rand(3,2), np.random.rand(2,3) for _ in range(10)]
+tup_runs = [(np.random.rand(3,2), np.random.rand(2,3)) for _ in range(10)]
 results = dopa.parallelize(tup_runs, two_arg_func)
 print(results[0])
 

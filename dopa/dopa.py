@@ -39,38 +39,35 @@ def _check_all_same_type(sequence):
 
 def _check_argument_list(runs, func):
     """
-
+    Check if all runs items are compatible with the func parameters.
     :param runs: the list of function parameters
     :param func: the target function
     :return: bool
     :raise MalformedArgListError(TypeError)
     """
     first = runs[0]
+    is_consistent = False
+    is_loosely_consistent = False
+
+    sig = signature(func).parameters.values()
+    
     if isinstance(first, np.ndarray):
         is_consistent = all([x.shape == first.shape for x in runs])
         if not is_consistent:
             raise MalformedArgListError('Inconsistent shapes of ndarrays')
-        length = None
     else:
-        try:
-            _it = iter(first)
-            length = max([len(x) for x in runs])
-            is_consistent = all([len(x) == length for x in runs])
-        except:
-            length = 1
-            is_consistent = _check_all_same_type(runs)
-
-    sig = signature(func)
-    if not is_consistent and length:
-        if all([isinstance(param.default, Parameter.empty) for param in sig.parameters.values()]):
-            raise MalformedArgListError(f"Inconsistent number of arguments passed to function {func.__name__}")
-        else:
-            missing = [_check_argument_default_value(param) for param in sig.parameters.values()].count(True)
-            is_loosely_consistent = all([((len(x) == length) or (len(x) + missing == length)) for x in runs])
-            if not is_loosely_consistent:
-                raise MalformedArgListError(f"Inconsistent number of arguments passed to function {func.__name__}")
+        is_consistent = all([isinstance(x, type(first)) for x in runs])
+        if is_consistent:
+            if isinstance(first, list) or isinstance(first, tuple) or isinstance(first, dict):
+                try: 
+                    assert all([len(x) == len(first) for x in runs])
+                except AssertionError:
+                    is_consistent = False
+                    is_loosely_consistent = True
+                    
+    # TODO: check is_loosely_consistent. Maybe we can leave this to the function.
     
-    return True
+    return is_consistent or is_loosely_consistent
 
 
 def do_parallel(runs, func, use_threads):
@@ -89,7 +86,7 @@ def do_parallel(runs, func, use_threads):
 
     done = []
 
-    is_ndarray = isinstance(runs[0], np.ndarray)
+    type_first = type(runs[0])
 
     with executor:
         jobs = {}
@@ -98,7 +95,7 @@ def do_parallel(runs, func, use_threads):
 
         while runs_left:
             for run in runs_iter:
-                if is_ndarray:
+                if type_first == np.ndarray or type_first == str:
                     future = executor.submit(func, run)
                 else:
                     try:
@@ -136,3 +133,4 @@ def parallelize(runs, func, use_threads=True):
         raise RuntimeError('Something bad happened')
 
 
+    
