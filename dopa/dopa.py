@@ -86,7 +86,8 @@ def do_parallel(runs, func, use_threads):
 
     done = []
 
-    type_first = type(runs[0])
+    first = runs[0]
+    is_iterable = isinstance(first, list) or isinstance(first, tuple)
 
     with executor:
         jobs = {}
@@ -95,13 +96,10 @@ def do_parallel(runs, func, use_threads):
 
         while runs_left:
             for run in runs_iter:
-                if type_first == np.ndarray or type_first == str:
-                    future = executor.submit(func, run)
+                if is_iterable:
+                    future = executor.submit(func, *run)
                 else:
-                    try:
-                        future = executor.submit(func, *run)
-                    except TypeError:
-                        future = executor.submit(func, run)
+                    future = executor.submit(func, run)
 
                 jobs[future] = run
                 if len(jobs) > MAX_JOB_NUMBER:

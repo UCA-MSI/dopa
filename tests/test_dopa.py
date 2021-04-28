@@ -2,6 +2,7 @@ import unittest
 from dopa import dopa  
 import numpy as np
 import os
+import pandas as pd
 
 def func1(x):
     return x + 1
@@ -18,6 +19,9 @@ def func4(A,B):
 def func5(fname):
     return os.stat(fname).st_mode
 
+def func6(pd_row):
+    return pd_row['a'] + pd_row['b']
+
 class TestDopa(unittest.TestCase):
     
     def setUp(self):
@@ -27,6 +31,7 @@ class TestDopa(unittest.TestCase):
         self.bad = [(1,2,3), 4]
         self.d = dict.fromkeys(self.singlearg, 2)
         self.arraylist_single = [(np.array([[1,2,3],[4,5,6]]), np.ones(shape = (2,3)))]
+        self.df = pd.DataFrame({'a': [1,2,3], 'b':[4,5,6]})
 
     def test_single_arg_thread(self):
         res = dopa.parallelize(self.singlearg, func1)
@@ -63,4 +68,10 @@ class TestDopa(unittest.TestCase):
         fnames = [f for f in content if os.path.isfile(f)]
         res = dopa.parallelize(fnames, func5)
         self.assertEqual(len(res), len(fnames))
+
+    def test_pandas_rows(self):
+        all_rows = [row for idx, row in self.df.iterrows()]
+        res = dopa.parallelize(all_rows, func6)
+        self.assertEqual(len(res), len(self.df))
+        self.assertListEqual(sorted(res), [5,7,9])
 
