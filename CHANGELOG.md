@@ -28,3 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Added
 - parallelization over pandas rows
 
+## [0.1.0.0]
+## Added
+- enforced ordered result
+- fixed __init__
+- config path works for installed users
+- corrected docstring

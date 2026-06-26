@@ -1,20 +1,24 @@
 import concurrent.futures
 from configparser import ConfigParser
-from inspect import signature, Parameter, getmro
+from inspect import signature
 import os
+from typing import Any, Callable, Optional, Sequence
+
 import numpy as np
 
 __all__ = ['MalformedArgListError', 'parallelize']
 
+_config = ConfigParser()
+_config.read(os.path.join(os.path.dirname(__file__), 'config.cfg'))
+
 try:
-    config = ConfigParser()
-    config.read('dopa/config.cfg')
-    MAX_TH_DEG = int(config['DEFAULT']['MAX_TH_DEG'])
-    MAX_PR_DEG = int(config['DEFAULT']['MAX_PR_DEG'])
-    MAX_JOB_NUMBER = int(config['DEFAULT']['MAX_JOB_NUMBER'])
-except (FileNotFoundError, KeyError) as e:
-    MAX_TH_DEG = os.cpu_count() * 2
-    MAX_PR_DEG = os.cpu_count() - 1
+    MAX_TH_DEG: int = int(_config['DEFAULT']['MAX_TH_DEG'])
+    MAX_PR_DEG: int = int(_config['DEFAULT']['MAX_PR_DEG'])
+    MAX_JOB_NUMBER: int = int(_config['DEFAULT']['MAX_JOB_NUMBER'])
+except KeyError:
+    _cpu = os.cpu_count() or 1
+    MAX_TH_DEG = _cpu * 2
+    MAX_PR_DEG = max(_cpu - 1, 1)
     MAX_JOB_NUMBER = max(MAX_TH_DEG, MAX_PR_DEG) * 2
 
 
@@ -22,113 +26,100 @@ class MalformedArgListError(TypeError):
     pass
 
 
-def _check_argument_default_value(param):
-    return param.default is not param.empty
+def _is_sequence(x: Any) -> bool:
+    return isinstance(x, (list, tuple))
 
 
-def _check_all_same_type(sequence):
+def _check_all_same_type(sequence: Sequence) -> bool:
+    """Check that all elements in sequence share the same type."""
+    it = iter(sequence)
+    first_type = type(next(it))
+    return all(type(x) is first_type for x in it)
+
+
+def _check_argument_list(runs: Sequence, func: Callable) -> None:
     """
-    Check consistency of types across a sequence
-    :param sequence: the iterable
-    :return: bool
-    """
-    iter_seq = iter(sequence)
-    first_type = type(next(iter_seq))
-    return first_type if all((type(x) is first_type) for x in iter_seq) else False
-
-
-def _check_argument_list(runs, func):
-    """
-    Check if all runs items are compatible with the func parameters.
+    Validate that all runs items are compatible with the func parameters.
     :param runs: the list of function parameters
     :param func: the target function
-    :return: bool
-    :raise MalformedArgListError(TypeError)
+    :raises MalformedArgListError: when runs is inconsistent or incompatible with func
     """
     first = runs[0]
-    is_consistent = False
-    is_loosely_consistent = False
 
-    sig = signature(func).parameters.values()
-    
     if isinstance(first, np.ndarray):
-        is_consistent = all([x.shape == first.shape for x in runs])
-        if not is_consistent:
-            raise MalformedArgListError('Inconsistent shapes of ndarrays')
-    else:
-        is_consistent = all([isinstance(x, type(first)) for x in runs])
-        if is_consistent:
-            if isinstance(first, list) or isinstance(first, tuple) or isinstance(first, dict):
-                try: 
-                    assert all([len(x) == len(first) for x in runs])
-                except AssertionError:
-                    is_consistent = False
-                    is_loosely_consistent = True
-                    
-    # TODO: check is_loosely_consistent. Maybe we can leave this to the function.
-    
-    return is_consistent or is_loosely_consistent
+        if not all(x.shape == first.shape for x in runs):
+            raise MalformedArgListError('Inconsistent ndarray shapes across runs')
+        return
+
+    if not _check_all_same_type(runs):
+        raise MalformedArgListError('Inconsistent types across runs')
 
 
-def do_parallel(runs, func, use_threads):
+def _do_parallel(
+    runs: Sequence,
+    func: Callable,
+    use_threads: bool,
+    max_workers: Optional[int] = None,
+    max_jobs: Optional[int] = None,
+) -> list:
     """
-    Execute in parallel the list of jobs, submitting each item in the `runs` list to the target function `func`.
-    If `use_threads` is set to True, it uses threads. (False -> processes)
-    :param runs: list of function parameters for the target function. One item for each function call
+    Execute in parallel the list of jobs.
+    :param runs: list of function parameters, one item per call
     :param func: the target function to be parallelized
-    :param use_threads: bool
-    :return: bool
+    :param use_threads: if True uses threads, otherwise processes
+    :param max_workers: override pool size
+    :param max_jobs: override max queued jobs
+    :return: list of results
     """
-    if use_threads:
-        executor = concurrent.futures.ThreadPoolExecutor(max_workers=MAX_TH_DEG)
-    else:
-        executor = concurrent.futures.ProcessPoolExecutor(max_workers=MAX_PR_DEG)
+    workers = max_workers or (MAX_TH_DEG if use_threads else MAX_PR_DEG)
+    batch_size = max_jobs or MAX_JOB_NUMBER
+    n_params = len(signature(func).parameters)
+    unpack = n_params > 1
 
-    done = []
+    executor_cls = (
+        concurrent.futures.ThreadPoolExecutor
+        if use_threads
+        else concurrent.futures.ProcessPoolExecutor
+    )
+    indexed: list = []
 
-    first = runs[0]
-    is_iterable = isinstance(first, list) or isinstance(first, tuple)
+    with executor_cls(max_workers=workers) as executor:
+        active: dict = {}  # future -> original index
 
-    with executor:
-        jobs = {}
-        runs_left = len(runs)
-        runs_iter = iter(runs)
+        def _submit(idx: int, run: Any) -> None:
+            future = executor.submit(func, *run) if unpack else executor.submit(func, run)
+            active[future] = idx
 
-        while runs_left:
-            for run in runs_iter:
-                if is_iterable:
-                    future = executor.submit(func, *run)
-                else:
-                    future = executor.submit(func, run)
+        for idx, run in enumerate(runs):
+            _submit(idx, run)
+            if len(active) >= batch_size:
+                completed = next(concurrent.futures.as_completed(active))
+                indexed.append((active[completed], completed.result()))
+                del active[completed]
 
-                jobs[future] = run
-                if len(jobs) > MAX_JOB_NUMBER:
-                    break
+        for future in concurrent.futures.as_completed(active):
+            indexed.append((active[future], future.result()))
 
-            for future in concurrent.futures.as_completed(jobs):
-                runs_left -= 1
-                result = future.result()
-                run = jobs[future]
-                del jobs[future]
-                done.append(result)
-                break
-
-    return done
+    indexed.sort(key=lambda x: x[0])
+    return [result for _, result in indexed]
 
 
-def parallelize(runs, func, use_threads=True):
+def parallelize(
+    runs: Sequence,
+    func: Callable,
+    use_threads: bool = True,
+    max_workers: Optional[int] = None,
+    max_jobs: Optional[int] = None,
+) -> list:
     """
-    Calls the `do_parallel` function after inspecting the consistency of the `runs` list.
-    :param runs: list of function parameters for the target function. One item for each function call
+    Parallelizes ``func`` over the argument sets in ``runs``.
+    :param runs: list of function parameters, one item per call
     :param func: the target function to be parallelized
-    :param use_threads: bool
-    :return: bool
+    :param use_threads: if True uses threads, otherwise processes
+    :param max_workers: override pool size (default: module-level MAX_TH_DEG or MAX_PR_DEG)
+    :param max_jobs: override max queued jobs (default: module-level MAX_JOB_NUMBER)
+    :return: list of results in the same order as ``runs``
+    :raises MalformedArgListError: when runs is malformed or incompatible with func
     """
-    try:
-        if _check_argument_list(runs, func):
-            return do_parallel(runs, func, use_threads)
-    except MalformedArgListError:
-        raise RuntimeError('Something bad happened')
-
-
-    
+    _check_argument_list(runs, func)
+    return _do_parallel(runs, func, use_threads, max_workers=max_workers, max_jobs=max_jobs)

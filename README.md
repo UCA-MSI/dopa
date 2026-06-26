@@ -41,5 +41,5 @@ runs = [1,2,3]
 
 print(dopa.parallelize(runs, f))
 
-# output: [4,3,2]
+# output: [2,3,4]
 ```
